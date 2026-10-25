@@ -12,6 +12,13 @@ Separate what you verified from what you're inferring. List what you could NOT c
 Finish with a prioritized checkbox to-do list.
 ```
 
+**Quick audit (one page or short list)**
+```
+Act as a senior technical SEO. Quick-audit {URL(s)} using the raw HTML I've provided (or fetch it with curl).
+Check indexability (status, robots, canonical), title, meta description, H1, opening paragraph, and structured data.
+Return: a 3-sentence summary, the top 5-8 issues as a table (Issue | Evidence | Impact | Fix), and a short checkbox list. State what you verified and what you couldn't check. Give rewritten titles/descriptions, not generic advice.
+```
+
 **Rendering check (JS sites)**
 ```
 Here is the raw HTML response (view-source) and the rendered DOM for {URL}.
@@ -53,7 +60,7 @@ List the subtopics, questions, formats, and evidence they cover that I don't, an
 
 **Title and meta**
 ```
-Write 5 title tag options (max 60 chars) and 3 meta descriptions (max 155 chars) for a page about {topic}, target query "{query}", brand "{brand}". Match {search intent}. No clickbait, no keyword stuffing. Mark the recommended pair.
+Write 5 title tag options (max 60 chars) and 3 meta descriptions (140-160 chars) for a page about {topic}, target query "{query}", brand "{brand}". Match {search intent}. No clickbait, no keyword stuffing. Mark the recommended pair.
 ```
 
 **Rewrite for AEO**

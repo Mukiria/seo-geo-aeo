@@ -23,10 +23,13 @@ The three share one foundation: **crawlable pages, clear entities, direct answer
 4. **Flag unverified practices.** Some GEO tactics (e.g. `llms.txt`) have no confirmed effect from major engines. Label them low-cost / unproven.
 5. **Fix in priority order.** Indexability, then content and intent, then enhancements. Don't polish titles on a page crawlers can't read.
 6. **Don't recommend spam**: keyword stuffing, hidden text, fake reviews, doorway pages, paid link schemes, mass AI-generated filler.
+7. **Re-check time-sensitive claims.** Search-engine and AI-vendor behavior changes. Crawler user-agent names, which rich results Google still shows (e.g. FAQ), whether AI crawlers execute JavaScript, and the status of `llms.txt` were last reviewed in this file on 2026-10-25 from the text alone, not re-verified against vendor docs. Before relying on one in an audit, confirm it in the vendor's current documentation, and say when you couldn't.
 
 ## Workflow
 
 Follow these phases in order. Skip a phase only if the user gives you its result.
+
+**Match the workflow to the request.** If the user wants only copy, schema, keyword strategy, or `llms.txt` (no site to crawl), run Phase 1 for the facts you need plus the relevant phase, and don't run a full audit. If a live site is available but the user didn't ask for a full audit, use the quick audit format below.
 
 ### Phase 1: Intake
 Collect or confirm: domain, business type, target audience and country/region, primary services/products, top 5-10 target queries (or help derive them), competitors, and what access exists (Search Console, Analytics, CMS, developer).
@@ -34,20 +37,29 @@ Collect or confirm: domain, business type, target audience and country/region, p
 ### Phase 2: Crawlability and indexability (blocking issues)
 Check in this order:
 
-- [ ] Does the page return real content in the HTML crawlers receive? (View source / "Test Live URL" in Search Console. Client-side rendered SPAs often return an empty shell.)
+- [ ] Does the page return real content in the HTML crawlers receive? (Raw `curl` / view-source / "Test Live URL" in Search Console, not the rendered DOM from a browser tool. Client-side rendered SPAs often return an empty shell.)
 - [ ] robots.txt: not blocking important paths, references the sitemap, admin/private paths disallowed.
 - [ ] `<meta name="robots">` and `X-Robots-Tag`: no accidental `noindex`/`nofollow`.
 - [ ] HTTP status: 200 for live pages, 301 for moves, 404/410 for gone. No soft 404s (SPA returning 200 for missing routes).
 - [ ] Canonicals: one self-referencing canonical per page; consistent `www` vs non-`www`, `http` vs `https`, trailing slash.
 - [ ] HTTPS everywhere; no mixed content.
+- [ ] Multi-language or multi-region sites: `hreflang` annotations are reciprocal, include a self-reference and `x-default`, and use valid language/region codes; each language version has its own self-canonical.
 - [ ] Internal links are real `<a href>` links (not click handlers only).
 - [ ] Sitemap: valid XML, lists all indexable URLs, includes accurate `<lastmod>`. (`priority` and `changefreq` are largely ignored by Google.)
 - [ ] No important content hidden behind logins, tabs that load on click only, or infinite scroll without paginated URLs.
 
+**Checks you can run yourself** (report only what you actually ran):
+
+- Raw HTML as crawlers get it: `curl -sL -A "Googlebot" <url>`. Browser tools return the rendered DOM, which can hide an empty shell, so use `curl` or view-source for this check.
+- Status, redirects and headers: `curl -sIL <url>` (look for the redirect chain, `X-Robots-Tag`, and `http` → `https` and `www` handling).
+- Soft 404: `curl -sI <url>/this-page-should-not-exist-12345` should return 404, not 200.
+- `curl -s <domain>/robots.txt` and `curl -s <domain>/sitemap.xml`; confirm the sitemap URLs return 200 and match the canonical host.
+- Canonical and robots meta: `curl -s <url> | grep -iE 'rel="canonical"|name="robots"'`.
+
 **If the site is a JavaScript SPA (React/Vue/Vite):** recommend server-side rendering, static generation, or prerendering per route. Do not treat this as optional.
 
 ### Phase 3: Technical performance and UX
-- Core Web Vitals (LCP, INP, CLS): measure with PageSpeed Insights / CrUX. Don't estimate.
+- Core Web Vitals (LCP, INP, CLS): measure with PageSpeed Insights / CrUX. Don't estimate. Low-traffic sites often have no CrUX field data; in that case use Lighthouse lab data and label it as lab, not field, data.
 - Mobile-friendly layout and readable tap targets.
 - Image optimization: modern formats (WebP/AVIF), explicit width/height, lazy-load below the fold.
 - JS bundle size, render-blocking resources, caching and compression.
@@ -60,7 +72,8 @@ For every important page:
 - **One H1** that matches the page's main intent; logical H2/H3 hierarchy.
 - **URL:** short, lowercase, hyphenated, descriptive.
 - **Opening paragraph** states what the page is and who it's for within the first ~100 words.
-- **Images:** descriptive filenames and alt text that describes the image, not keywords stuffed in.
+- **Images:** descriptive filenames and alt text that describes the image, not keywords stuffed in. Include important images in the sitemap (image extension) or in crawlable `<img>` tags, not CSS backgrounds only.
+- **Target region and language:** write for the audience's country (spelling, currency, local terms, payment methods and locations), set `<html lang>`, and use `hreflang` if serving more than one language or region.
 - **Internal links:** descriptive anchor text, linking related pages (hub-and-spoke).
 - **Unique, useful content** per page. Thin or duplicate pages should be merged, expanded, or noindexed.
 
@@ -81,6 +94,7 @@ Use only markup that matches visible page content. Validate with Google's Rich R
 | Product / shop | `Product` with `offers` (price, currency, availability); `AggregateRating` only with real, visible reviews |
 | Articles / blog | `Article` or `BlogPosting` (headline, author, datePublished, dateModified, image) |
 | Portfolio / projects | `CreativeWork`, `VideoObject`, `SoftwareApplication`, or `ImageObject` as appropriate |
+| Video | `VideoObject` (name, description, thumbnailUrl, uploadDate); consider a video sitemap for self-hosted video |
 | Navigation | `BreadcrumbList` |
 | Q&A content | `FAQPage` only where a real FAQ is visible. Note: Google now shows FAQ rich results only for a narrow set of sites, but the markup still helps machines parse the content |
 
@@ -90,12 +104,12 @@ Also: `Person` for authors with `sameAs`, to establish entity identity. Don't ma
 Goal: be the extractable answer.
 
 - **Lead with the answer.** Put a 40-60 word direct answer immediately under the question-style heading, then elaborate.
-- Use **question-based headings** that mirror real queries ("How much does X cost in Kenya?", "What is Y?").
+- Use **question-based headings** that mirror real queries ("How much does X cost in {region}?", "What is Y?").
 - Use **lists for steps/options**, **tables for comparisons**, **short definitions** for "what is" queries. Keep them as real HTML elements (`<ol>`, `<ul>`, `<table>`).
 - Cover **follow-up questions** in the same page (the "People also ask" pattern).
 - Write conversationally for **voice and long-tail queries**; include location and context where relevant.
 - Keep key facts (price, hours, specs, definitions) in **plain text**, not only in images, PDFs, or JS widgets.
-- For local intent: keep Google Business Profile complete and consistent with on-site name, address, phone (NAP).
+- For local intent: keep Google Business Profile complete and consistent with on-site name, address, phone (NAP). Check the primary category, hours, services, photos, and that reviews are answered; link the profile from the site and the site from the profile.
 
 ### Phase 8: GEO (generative engine optimization)
 Goal: be retrievable, quotable, and clearly attributed in AI answers.
@@ -134,7 +148,9 @@ Goal: be retrievable, quotable, and clearly attributed in AI answers.
 
 ## Output format for audits
 
-Produce, in this order:
+**Scale to the request.** For a quick audit (the user asked "check my site" or gave one page), cover Phases 2 and 4 on the pages provided and return: a 3-sentence summary, a findings table limited to the top 5-8 issues, and a short checkbox list. Use the full structure below only when the user asks for a full or site-wide audit.
+
+Full audit: produce, in this order:
 
 1. **Summary** (3-5 sentences): overall state and the single biggest blocker.
 2. **What was checked and how** (files, tools, pages) plus **what could not be checked**.
